@@ -68,7 +68,7 @@ Environment variables for testing. They are not user settings.
 | `GPT_LIVE_OUTPUT`     | `none` discards GPT-Live's audio; a path writes it to a WAV file.                                      |
 | `GPT_LIVE_AUTOSTART`  | Start a call as soon as a session is open.                                                             |
 | `GPT_LIVE_DEBUG`      | Path to a JSONL file for UI diagnostics: which aura surface was picked, terminal capabilities, errors. |
-| `GPT_LIVE_VISUAL`     | Force the aura surface: `kitty`, `herdr` or `blocks`.                                                  |
+| `GPT_LIVE_VISUAL`     | Force the aura surface: `kitty`, `herdr`, `blocks` or `none`.                                          |
 | `GPT_LIVE_HOST`       | Path to a `gpt-live-host` binary to use instead of the usual lookup.                                   |
 
 A hands-free test run: a recorded question as the microphone, no speaker, the call starting on its own:

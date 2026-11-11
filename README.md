@@ -147,7 +147,8 @@ Pass options with the object form of the plugin entry. Every option is optional.
 | `voiceModel`             | `"openai/gpt-6.1-sol"`                                     | Model for the background agent that thinks for GPT-Live, as `provider/model`.                                        |
 | `voiceVariant`           | `"medium"`                                                 | Thinking level for that model.                                                                                       |
 | `log`                    | `true`                                                     | Keep a local log of each call (see [Privacy](#privacy)).                                                             |
-| `visual`                 | automatic                                                  | Force the aura's drawing method: `kitty`, `herdr` or `blocks`.                                                       |
+| `visual`                 | automatic                                                  | Force the aura's drawing method: `kitty`, `herdr` or `blocks`, or `none` to turn the aura off.                       |
+| `fps`                    | `30`                                                       | Highest frame rate for the aura, panel and call strip. Lower it (for example `10`) to reduce terminal load.          |
 
 ### Custom prompts
 

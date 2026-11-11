@@ -6,7 +6,8 @@ import type { Plugin } from "@opencode/plugin/tui"
  * - herdr: frames streamed through herdr's pane graphics API (herdr does not display kitty
  *   images printed by programs)
  * - blocks: half-block characters with true color, for every other terminal
- * The choice is automatic; GPT_LIVE_VISUAL or the `visual` option can force one.
+ * The choice is automatic; GPT_LIVE_VISUAL or the `visual` option can force one, or turn the
+ * aura off with "none".
  */
 import type { RGBA, Renderable, TextRenderable } from "@opentui/core"
 
@@ -43,9 +44,25 @@ export function debug(entry: Record<string, unknown>) {
   }
 }
 
+/** The `visual` option; set once the plugin's options are known. */
+let configuredVisual: string | undefined
+
+export function configureVisual(visual: string | undefined) {
+  configuredVisual = visual
+}
+
+function forcedVisual() {
+  return configuredVisual ?? process.env.GPT_LIVE_VISUAL
+}
+
+/** False when the `visual` option (or GPT_LIVE_VISUAL) is "none": no aura is drawn anywhere. */
+export function auraEnabled() {
+  return forcedVisual() !== "none"
+}
+
 export function pickSurface(context: Context, layer: string, rows: number): Surface {
   const renderer = context.renderer
-  const forced = (context.options as { visual?: string }).visual ?? process.env.GPT_LIVE_VISUAL
+  const forced = forcedVisual()
   // A multiplexer nested inside herdr inherits herdr's environment, but herdr's pane
   // coordinates no longer match what is on screen.
   const nested = !!(process.env.TMUX || process.env.STY || process.env.ZELLIJ)

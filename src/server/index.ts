@@ -7,6 +7,7 @@ import { Bridge } from "./bridge"
 import { background, historyFrom, type HistoryEntry } from "./context"
 import { LiveError, MODEL, Sideband, createCall, requestIDs } from "./live"
 import { CallLog } from "./log"
+import { terminalOptions } from "./options"
 import { loadPrompt } from "./prompt"
 
 interface Options {
@@ -213,6 +214,8 @@ export default Plugin.define({
     await ctx.session.hook("compaction", (event) => shapeRequest(event as never))
 
     const registration = await ctx.rpc.register(GptLive, {
+      options: async () => terminalOptions(ctx.options as Record<string, unknown>),
+
       status: async () => {
         const auth = await resolveAuth(ctx)
         return defined({

@@ -67,4 +67,24 @@ describe("frame clock", () => {
     // Still mounted: every frame reached the view, including the ones after it failed.
     expect(updates).toBe(9)
   })
+
+  test("the fps option caps the frame rate of animating views", () => {
+    const voice = { onChange: () => () => {} }
+    const period = (fps?: number) => {
+      const frames = new Frames(voice as unknown as VoiceController, fps)
+      frames.mount({
+        root: { isDestroyed: false, destroyRecursively() {} } as unknown as View["root"],
+        animating: () => true,
+        interval: () => 33,
+        update() {},
+      })
+      const result = (frames as unknown as { period: number }).period
+      frames.dispose()
+      return result
+    }
+    expect(period()).toBe(33)
+    expect(period(10)).toBe(100)
+    expect(period(1000)).toBe(33)
+    expect(period(0)).toBe(33)
+  })
 })

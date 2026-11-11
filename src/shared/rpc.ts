@@ -66,6 +66,21 @@ export const GptLive = define({
         voiceSessionID: z.string().optional(),
       }),
     },
+    /**
+     * The terminal plugin's options. OpenCode passes `opencode.json` plugin options only to the
+     * server part, so the terminal part reads its settings from here.
+     */
+    options: {
+      input: z.object({}),
+      output: z.object({
+        voice: z.string().optional(),
+        panel: z.boolean().optional(),
+        duck: z.boolean().optional(),
+        visual: z.string().optional(),
+        fps: z.number().optional(),
+        keybinds: z.record(z.string(), z.union([z.string(), z.array(z.string()), z.literal(false)])).optional(),
+      }),
+    },
     /** Heartbeat from the window that owns the call; calls whose window goes quiet are ended. */
     alive: {
       input: z.object({ callID: z.string() }),

@@ -1,8 +1,9 @@
 import type { Plugin as PluginNamespace } from "@opencode/plugin/tui"
 
-import { VOICES, type Voice } from "../shared/rpc"
+import { GptLive, VOICES, type Voice } from "../shared/rpc"
 import { VoiceController, describeError } from "./controller"
 import { callModel, type CallModel } from "./model"
+import { auraEnabled, configureVisual, debug } from "./surface"
 import { Frames, footerBadge, transcriptPanel, useCore, voiceAura, voiceStrip, type Core, type View } from "./ui"
 
 const PANEL = "gptlive.transcript"
@@ -47,26 +48,54 @@ export function resolveKey(value: unknown, fallback: KeyOption): false | string 
   return typeof chosen === "string" ? chosen : resolveKey(undefined, fallback)
 }
 
+/**
+ * Options from the plugin's `opencode.json` entry. OpenCode hands those only to the server part,
+ * so ask it; without an answer the terminal part runs on `cli.json` options and defaults.
+ */
+async function serverOptions(context: Context): Promise<Record<string, unknown>> {
+  const location = context.location ?? context.data.location.default()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => resolve(undefined), 3000)
+  })
+  try {
+    const reply = await Promise.race([context.client.rpc(GptLive).options({}, { location }), timeout])
+    return reply ?? {}
+  } catch (error) {
+    debug({ event: "options-error", error: String(error) })
+    return {}
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** Builds the terminal plugin; `core` must be imported by the entry file (see tui.ts). */
 export function createTuiPlugin(module: Core): PluginNamespace.Definition {
   useCore(module)
   return {
     id: "opencode-gpt-live.tui",
-    setup(context: Context) {
-      const options = context.options as {
+    async setup(context: Context) {
+      const options = {
+        ...(await serverOptions(context)),
+        ...(context.options as Record<string, unknown>),
+      } as {
         voice?: string
         panel?: boolean
         duck?: boolean
+        visual?: string
+        fps?: number
         keybinds?: Partial<Record<KeyAction, KeyOption>>
       }
+      configureVisual(options.visual)
       const key = (action: KeyAction) => resolveKey(options.keybinds?.[action], DEFAULT_KEYS[action])
       const voice = new VoiceController(context, {
         voice: VOICES.includes(options.voice as Voice) ? (options.voice as Voice) : undefined,
         // Other apps' audio is turned down during calls and restored afterwards.
         duck: options.duck !== false,
       })
-      const frames = new Frames(voice)
+      const frames = new Frames(voice, options.fps)
       const autoPanel = options.panel !== false
+      debug({ event: "setup", root: import.meta.dir, options, aura: auraEnabled() })
       let preparing: number | undefined
       let generation = 0
       let disposed = false
@@ -276,11 +305,15 @@ export function createTuiPlugin(module: Core): PluginNamespace.Definition {
             return frames.mount(gated)
           },
         }),
-        context.ui.slot({
-          prepend: "sidebar.content",
-          render: (input) =>
-            frames.mount(voiceAura(context, voice, () => voice.owns(input.sessionID), "gptlive-aura-sidebar")),
-        }),
+        ...(auraEnabled()
+          ? [
+              context.ui.slot({
+                prepend: "sidebar.content",
+                render: (input) =>
+                  frames.mount(voiceAura(context, voice, () => voice.owns(input.sessionID), "gptlive-aura-sidebar")),
+              }),
+            ]
+          : []),
         context.ui.slot({
           append: "prompt.footer.status",
           render: () => frames.mount(footerBadge(context, voice)),

@@ -8,7 +8,7 @@ import type { RGBA, Renderable, TextRenderable } from "@opentui/core"
 import { AuraCanvas, type AuraPalette, type Rgb } from "./aura"
 import type { Entry, VoiceController } from "./controller"
 import { type Core, useCore as provideCore } from "./core"
-import { debug, fallbackSurface, pickSurface, type Surface } from "./surface"
+import { auraEnabled, debug, fallbackSurface, pickSurface, type Surface } from "./surface"
 import { duration, flap, pulse, shimmer, spinner } from "./visuals"
 
 type Context = Plugin.Context
@@ -423,8 +423,8 @@ export function transcriptPanel(context: Context, voice: VoiceController, visibl
     stickyStart: "bottom",
     marginTop: 1,
   })
-  const aura = voiceAura(context, voice, visible, "gptlive-aura-panel")
-  root.add(aura.root)
+  const aura = auraEnabled() ? voiceAura(context, voice, visible, "gptlive-aura-panel") : undefined
+  if (aura) root.add(aura.root)
   root.add(header)
   root.add(devices)
   root.add(scroll)
@@ -434,11 +434,11 @@ export function transcriptPanel(context: Context, voice: VoiceController, visibl
   return {
     root,
     animating: (now) => voice.active || voice.state.entries.some((entry) => entryAnimating(entry, now)),
-    interval: () => (aura.animating(Date.now()) ? aura.interval!() : 33),
-    suspend: () => aura.suspend!(),
-    dispose: () => aura.dispose!(),
+    interval: () => (aura?.animating(Date.now()) ? aura.interval!() : 33),
+    suspend: () => aura?.suspend!(),
+    dispose: () => aura?.dispose!(),
     update(now) {
-      aura.update(now)
+      aura?.update(now)
       const state = voice.state
       const p = palette(context.theme)
       const phase =
@@ -529,7 +529,8 @@ export function footerBadge(context: Context, voice: VoiceController): View {
 
 /**
  * Drives every mounted view: redraws on state changes, and while anything is animating at
- * the fastest rate an animating view asks for (60 fps for the image aura, else 30). Views whose renderables were removed by the host are dropped automatically.
+ * the fastest rate an animating view asks for (60 fps for the image aura, else 30), capped by
+ * the `fps` option. Views whose renderables were removed by the host are dropped automatically.
  */
 export class Frames {
   private readonly views = new Set<View>()
@@ -538,8 +539,14 @@ export class Frames {
   private timer: ReturnType<typeof setInterval> | undefined
   private period = 0
   private readonly stopListening: () => void
+  /** Shortest frame interval allowed, in milliseconds. */
+  private readonly minPeriod: number
 
-  constructor(private readonly voice: VoiceController) {
+  constructor(
+    private readonly voice: VoiceController,
+    fps?: number,
+  ) {
+    this.minPeriod = typeof fps === "number" && fps > 0 ? 1000 / fps : 0
     this.stopListening = voice.onChange(() => this.tick())
   }
 
@@ -576,6 +583,7 @@ export class Frames {
         }
       }
     }
+    period = Math.max(period, this.minPeriod)
     if (this.timer && (!animating || period !== this.period)) {
       clearInterval(this.timer)
       this.timer = undefined
