@@ -529,7 +529,7 @@ export function footerBadge(context: Context, voice: VoiceController): View {
 
 /**
  * Drives every mounted view: redraws on state changes, and while anything is animating at
- * the fastest rate an animating view asks for (60 fps for the image aura, else 30), capped by
+ * the fastest rate an animating view asks for (30 fps by default), capped by
  * the `fps` option. Views whose renderables were removed by the host are dropped automatically.
  */
 export class Frames {

@@ -39,6 +39,7 @@ flowchart LR
 | `src/server/context.ts`   | Conversation history quoted as data, and agent text made speakable.                          |
 | `src/server/auth.ts`      | Reads OpenCode's ChatGPT OAuth sign-in.                                                      |
 | `src/server/log.ts`       | The per-call JSONL log.                                                                      |
+| `src/server/options.ts`   | Picks the terminal plugin's options out of the `opencode.json` entry for the `options` RPC.  |
 | `src/tui/index.ts`        | Terminal plugin: commands, keys, slots, starting calls.                                      |
 | `src/tui/controller.ts`   | Call state machine in the terminal, helper lifecycle, RPC events, heartbeats.                |
 | `src/tui/helper.ts`       | Finds, downloads (with checksum verification) and drives the native helper.                  |
@@ -142,8 +143,12 @@ constraints drive this:
 - **No JSX.** For the same reason the UI does not use Solid; views are plain objects with `update(now)`,
   `animating(now)` and optional `interval()`, `suspend()` and `dispose()`.
 
+OpenCode passes the plugin's `opencode.json` options only to the server part. At setup the terminal part asks for them
+with the `options` RPC (3 s timeout) and lays its own options on top, so `voice`, `panel`, `duck`, `visual`, `fps` and
+`keybinds` work from `opencode.json`. Without an answer it runs on its own options and defaults.
+
 The frame clock runs only while something animates, at the fastest interval any animating view asks for (33 ms for
-the aura).
+the aura), but never faster than the `fps` option allows.
 
 ### The aura
 
@@ -159,6 +164,9 @@ spinning the other way in violet. The level driving it is smoothed with a 40 ms 
 | `herdr`  | `HERDR_ENV=1`, not inside tmux, screen or Zellij | RGBA frames over herdr's `pane.graphics.stream` socket, 30 fps |
 | `kitty`  | The renderer reports kitty graphics              | Kitty graphics commands over an empty slot, 30 fps (see below) |
 | `blocks` | Everywhere else                                  | Half-block characters, rendered at 3× and averaged down        |
+
+The `visual` option (or `GPT_LIVE_VISUAL`) forces a surface. `none` turns the aura off: the panel has no aura and the
+sidebar aura slot is not registered.
 
 The kitty surface (`src/tui/kitty.ts`) does not use OpenTUI's `ImageRenderable`, which clears the cells under an image
 to the terminal's default background: with a translucent terminal, every late frame flashed a see-through square. It
